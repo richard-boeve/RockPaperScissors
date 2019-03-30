@@ -12,7 +12,7 @@ contract RockPaperScissors is Stoppable {
     
     //@notice  State variables
     uint256 constant gameExpiry = 1 minutes;
-
+    
     //@notice  Defining the move possibilities
     enum Moves { 
         Undefined,
@@ -43,6 +43,9 @@ contract RockPaperScissors is Stoppable {
 
     //@notice  Mapping that stores winnings 
     mapping(address => uint256) public balance;
+    
+    //@notice  Mapping that stores submitted moves hashes 
+    mapping(bytes32 => bool) public submits;
 
     //@notice  All events resulting from the contracts functions
     event LogDeposit(address indexed sender, uint256 depositAmount);
@@ -70,6 +73,8 @@ contract RockPaperScissors is Stoppable {
         bytes32 storeMoveOpponent = keccak256(abi.encodePacked(_opponentAddress, msg.sender));
         //@dev  Verify that the balance and msg.value are equal or greater than the wager
         require(balance[msg.sender].add(msg.value) >= _wager, "You don't have enough funds to submit a move with this wager");
+        //@dev  Verify that the password / move combination hasn't been used before
+        require(submits[_hashedMove] == false, "You have previously used this move / password combination, please use an unique password");
         //@dev  Verify that there is no existing move for sender against the opponent
         require(plays[storeMove].opponent == address(0), "You have already submitted a move against this opponent");
         //@dev  Verify if the opponent already has submitted a move and if they have, that it has the same wager
@@ -84,6 +89,8 @@ contract RockPaperScissors is Stoppable {
         currentMove.wager = _wager;
         currentMove.hashedMove = _hashedMove;
         currentMove.timestampSubmit = now;
+        //@dev  Set the hashed submit to true so it can't be used again
+        submits[_hashedMove] = true;
         //@dev  Create logs
         emit LogSubmittedMove(msg.sender, _opponentAddress, _wager);
     }
@@ -101,7 +108,7 @@ contract RockPaperScissors is Stoppable {
         require(plays[opponentDetails].opponent == msg.sender, 
         "You can't reveal your move until after your opponent has submitted a move");
         //@dev  Verify that the hash is correct
-        require(plays[msgSenderDetails].hashedMove == keccak256(abi.encodePacked(this, msg.sender, _move, _password)) , 
+        require(plays[msgSenderDetails].hashedMove == generateHashedMove(_move, _password), 
         "The move you are attempting to reveal is not the same as the one you submited");
         Plays storage saveMove = plays[msgSenderDetails];
         saveMove.move = _move;
