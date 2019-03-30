@@ -11,7 +11,7 @@ contract RockPaperScissors is Stoppable {
     using SafeMath for uint256;
     
     //@notice  State variables
-    uint256 constant gameExpiry = 1 weeks;
+    uint256 constant gameExpiry = 1 minutes;
 
     //@notice  Defining the move possibilities
     enum Moves { 
@@ -101,7 +101,7 @@ contract RockPaperScissors is Stoppable {
         require(plays[opponentDetails].opponent == msg.sender, 
         "You can't reveal your move until after your opponent has submitted a move");
         //@dev  Verify that the hash is correct
-        require(plays[msgSenderDetails].hashedMove == keccak256(abi.encodePacked(this, _move, _password)) , 
+        require(plays[msgSenderDetails].hashedMove == keccak256(abi.encodePacked(this, msg.sender, _move, _password)) , 
         "The move you are attempting to reveal is not the same as the one you submited");
         Plays storage saveMove = plays[msgSenderDetails];
         saveMove.move = _move;
@@ -169,18 +169,18 @@ contract RockPaperScissors is Stoppable {
         }
     }
      
-    //@notice  Function that allows a player to withdraw his/her balance minus outstanding wagers
-    function withdrawBalance() public onlyIfNotPaused { 
-        //@dev  Retrieve balance of msg.sender
-        uint256 balanceToWithdraw = balance[msg.sender];
-        //@dev  Verify the sender has a positive balance
-        require(balanceToWithdraw > 0, "There is no balance to withdraw");
+    //@notice  Function that allows a player to withdraw his/her balance
+    function withdrawBalance(uint256 amount) public onlyIfNotPaused { 
+        //@dev  Verify that the amount is positive
+        require(amount > 0, "You must withdraw a positive amount");
+        //@dev  Verify that the amount is not greater than the balance
+        require(balance[msg.sender] >= amount, "You don't have a high enough balance");
         //@dev  Decrease balance 
-        balance[msg.sender] = 0;
+        balance[msg.sender] = balance[msg.sender].sub(amount);
         //@dev  Transfer balance to sender
-        address(msg.sender).transfer(balanceToWithdraw);
+        address(msg.sender).transfer(amount);
         //@dev  Create logs
-        emit LogWithdrawBalance(msg.sender, balanceToWithdraw);
+        emit LogWithdrawBalance(msg.sender, amount);
     }    
     
     //@notice  Retrieves contract balance - just for Remix
@@ -193,7 +193,7 @@ contract RockPaperScissors is Stoppable {
         //Verify that the move and password have been populated
         require(_move == Moves.Rock || _move == Moves.Paper || _move == Moves.Scissors, "You must enter either Rock, Paper or Scissors");
         require(_password != 0, "Entering a password is mandatory");
-        return keccak256(abi.encodePacked(this, _move, _password));
+        return keccak256(abi.encodePacked(this, msg.sender, _move, _password));
     }
     
     //@notice  Function that calculates the winning move
@@ -225,4 +225,5 @@ contract RockPaperScissors is Stoppable {
         //@dev  Create logs
         emit LogRescindedMove(msg.sender, _opponent, wager);
     }
+
 }
