@@ -10,13 +10,45 @@
 
     <script src="js/app.js"></script>
 
-    <div>The Rock Paper Scissors contract has a total balance of <span id="balanceContract">Loading...</span> Ether.
-    </div>
     <div>
-        Deposit <input name="amount" type="number" placeholder="0" /> Ether
-        to your in game account. <button id="send">Now</button>.
+        <h3>Balance</h3>
+        The Rock Paper Scissors contract has a total balance of <span id="balanceContract">Loading...</span> Ether.
     </div>
 
+    <div>
+        <h3>Deposit</h3>
+        Deposit <input name="amount" type="number" placeholder="0" /> wei from this address <input style="width:30em;" name="sender" type="text" placeholder="Deposit Address" />
+        to your in game account. <button id="sendDeposit">Submit</button>
+    </div>
+
+    <div>
+        <h3>Generate Hashed Move</h3>
+        Generate your hashed move by entering your move <input name="move" type="number" placeholder="Move" /> your
+        password <input name="password" type="password" placeholder="Password" /> and your address <input style="width:30em;" name="passwordSender" type="text" placeholder="Deposit Address" /> <button id="generateHashedMove">Submit</button>
+    </div>
+    <div>
+        Hashed password: <span id="hashedPassword">Loading...</span>
+    </div>
+
+    <div>
+        <h3>Submit Move</h3>
+        Submit your move by entering your address <input style="width:30em;" name="moveSender" type="text" placeholder="Sender Address" />, your opponents address <input style="width:30em;" name="opponent" type="text" placeholder="Opponent Address" /> your hashed move <input style="width:30em;" name="hashedMove" type="text" placeholder="Hashed move" /> and your wager <input name="wager" type="number" placeholder="0" />  Optionally you can also deposit Ether<input name="amountSubmit" type="number" placeholder="0" /> <button id="submitMove">Submit</button>
+    </div>
+
+    <div>
+        <h3>Reveal Move</h3>
+        Reveal your move by entering your address <input style="width:30em;" name="revealSender" type="text" placeholder="Sender Address" /> your opponents address <input style="width:30em;" name="revealOpponent" type="text" placeholder="Opponent Address" /> your move <input name="revealMove" type="number"   placeholder="Move" /> and your password <input name="revealPassword" type="password" placeholder="Password" /> <button id="revealMove">Submit</button>
+    </div>
+
+    <div>
+        <h3>Rescind Move</h3>
+        Rescind your move by entering your address <input style="width:30em;" name="rescindSender" type="text" placeholder="Sender Address" /> and your opponents address <input style="width:30em;" name="rescindOpponent" type="text" placeholder="Opponent Address" /> <button id="rescindMove">Submit</button>
+    </div>
+
+    <div>
+        <h3>Withdraw Balance</h3>
+        Reveal your move by entering your address <input style="width:30em;" name="withdrawSender" type="text" placeholder="Sender Address" /> and the amount you wish to withdraw <input name="withdrawAmount" type="number" placeholder="0" /> <button id="withdraw">Submit</button>
+    </div>
 
     <div id="status"></div>
 

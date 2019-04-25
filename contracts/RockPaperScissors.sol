@@ -50,7 +50,7 @@ contract RockPaperScissors is Stoppable {
     //@notice  All events resulting from the contracts functions
     event LogDeposit(address indexed sender, uint256 depositAmount);
     event LogSubmittedMove(address indexed sender, address indexed opponent, uint256 wager);
-    event LogPlayedGame (address indexed sender, address indexed opponent, Result result, uint256 wager);
+    event LogPlayedGame (address indexed sender, Moves move, address indexed opponent, Moves opponentMove, Result result, uint256 wager);
     event LogRescindedMove(address indexed sender, address indexed opponent, uint256 wager);
     event LogWithdrawBalance(address indexed sender, uint256 withdrawAmount);
     
@@ -68,9 +68,9 @@ contract RockPaperScissors is Stoppable {
      //@notice  Function that allows a move to be submitted
     function submitMove(address _opponentAddress, bytes32 _hashedMove, uint256 _wager) public onlyIfRunning payable {
         //@dev  Create a unique hash to store the move
-        bytes32 storeMove = keccak256(abi.encodePacked(msg.sender, _opponentAddress));
+        bytes32 storeMove = calculateStorageHashMsgSender(msg.sender, _opponentAddress);
         //@dev  Calculate the hash your opponent has stored his move against (or where he/she will store move)
-        bytes32 storeMoveOpponent = keccak256(abi.encodePacked(_opponentAddress, msg.sender));
+        bytes32 storeMoveOpponent = calculateStorageHashOpponent(_opponentAddress, msg.sender);
         //@dev  Verify that the balance and msg.value are equal or greater than the wager
         require(balance[msg.sender].add(msg.value) >= _wager, "You don't have enough funds to submit a move with this wager");
         //@dev  Verify that the password / move combination hasn't been used before
@@ -98,9 +98,9 @@ contract RockPaperScissors is Stoppable {
     //Function that allows a player to reveal their move, but only if the opponent has also submitted a move
     function revealMove(address _opponentAddress, Moves _move, bytes32 _password) public onlyIfRunning {
         //@dev  Calculate hash against which the move is stored
-        bytes32 msgSenderDetails = keccak256(abi.encodePacked(msg.sender, _opponentAddress));
+        bytes32 msgSenderDetails = calculateStorageHashMsgSender(msg.sender, _opponentAddress);
         //@dev  Calculate the hash your opponent has stored his move against
-        bytes32 opponentDetails = keccak256(abi.encodePacked(_opponentAddress, msg.sender));
+        bytes32 opponentDetails = calculateStorageHashOpponent(_opponentAddress, msg.sender);
         //@dev  Verify that msg.sender has stored a move against opponent
         require(plays[msgSenderDetails].opponent == _opponentAddress, 
         "There is no move outstanding against opponent which you can reveal");
@@ -130,7 +130,7 @@ contract RockPaperScissors is Stoppable {
         delete plays[msgSenderDetails];
         delete plays[opponentDetails];
         //@dev  Create logs
-        emit LogPlayedGame(msg.sender, _opponent, gameResult, wager);
+        emit LogPlayedGame(msg.sender, _move, _opponent, moveOpponent, gameResult, wager);
         //@dev  Assign wager to winning players balance and decrease balance of losing player
         if (gameResult == Result.msgSenderWins) {
             balance[msg.sender] = balance[msg.sender].add((wager.mul(2)));
@@ -149,9 +149,9 @@ contract RockPaperScissors is Stoppable {
     //@notice  or when move doesn't get revealed within a week of msg.sender revealing
     function rescindMove(address _opponent) public onlyIfRunning {
         //@dev  Calculate hash against which the move is stored
-        bytes32 msgSenderDetails = keccak256(abi.encodePacked(msg.sender, _opponent));
+        bytes32 msgSenderDetails = calculateStorageHashMsgSender(msg.sender, _opponent);
         //@dev  Calculate the hash your opponent has stored his move against
-        bytes32 opponentDetails = keccak256(abi.encodePacked(_opponent, msg.sender));
+        bytes32 opponentDetails = calculateStorageHashOpponent(_opponent, msg.sender);
         //@dev  Verify there is a move stored against opponent
         require(plays[msgSenderDetails].opponent == _opponent, "There is no move outstanding against opponent");
         //@dev  If the opponent has not submitted a move
@@ -196,11 +196,23 @@ contract RockPaperScissors is Stoppable {
     }
     
     //Function that allows a move with password to be hashed
-    function generateHashedMove(Moves _move, bytes32 _password) view public onlyIfRunning returns (bytes32) {
+    function generateHashedMove(Moves _move, bytes32 _password) view public returns (bytes32) {
         //Verify that the move and password have been populated
         require(_move == Moves.Rock || _move == Moves.Paper || _move == Moves.Scissors, "You must enter either Rock, Paper or Scissors");
         require(_password != 0, "Entering a password is mandatory");
         return keccak256(abi.encodePacked(this, msg.sender, _move, _password));
+    }
+    
+    //@notice  Function that calculates the hash against which moves are stored in the mapping for the player
+    function calculateStorageHashMsgSender(address _msgSender, address _opponentAddress) pure public returns (bytes32 storageHashPlayer) {
+        bytes32 storeMove = keccak256(abi.encodePacked(_msgSender, _opponentAddress));
+        return storeMove;
+    }
+    
+    //@notice  Function that calculates the hash against which moves are stored in the mapping for the opponent
+    function calculateStorageHashOpponent(address _opponentAddress, address _msgSender) pure public returns (bytes32 storageHashOpponent) {
+        bytes32 storeMove = keccak256(abi.encodePacked(_opponentAddress, _msgSender));
+        return storeMove;
     }
     
     //@notice  Function that calculates the winning move
