@@ -1,4 +1,4 @@
-pragma solidity 0.5.6;
+pragma solidity ^0.5.8;
 
 import "./Stoppable.sol";
 import "./SafeMath.sol";
@@ -9,16 +9,16 @@ contract RockPaperScissors is Stoppable {
 
     //@notice  Using the SafeMath library
     using SafeMath for uint256;
-    
+
     //@notice  State variables
     uint256 constant gameExpiry = 1 minutes;
-    
+
     //@notice  Defining the move possibilities
-    enum Moves { 
+    enum Moves {
         Undefined,
-        Rock, 
-        Paper, 
-        Scissors 
+        Rock,
+        Paper,
+        Scissors
     }
 
     //@notice  Defining the possible game outcomes
@@ -37,14 +37,14 @@ contract RockPaperScissors is Stoppable {
         uint256 timestampSubmit;
         uint256 timestampReveal;
     }
-    
+
     //@notice  Mapping that stores players moves
     mapping(bytes32 => Plays) public plays;
 
-    //@notice  Mapping that stores winnings 
+    //@notice  Mapping that stores winnings
     mapping(address => uint256) public balance;
-    
-    //@notice  Mapping that stores submitted moves hashes 
+
+    //@notice  Mapping that stores submitted moves hashes
     mapping(bytes32 => bool) public submits;
 
     //@notice  All events resulting from the contracts functions
@@ -53,8 +53,8 @@ contract RockPaperScissors is Stoppable {
     event LogPlayedGame (address indexed sender, Moves move, address indexed opponent, Moves opponentMove, Result result, uint256 wager);
     event LogRescindedMove(address indexed sender, address indexed opponent, uint256 wager);
     event LogWithdrawBalance(address indexed sender, uint256 withdrawAmount);
-    
-    
+
+
     //@notice  Function that allows players to deposit to their balance
     function deposit() public onlyIfRunning payable {
         //@dev  Verify that the funds sent are a positive value
@@ -63,8 +63,8 @@ contract RockPaperScissors is Stoppable {
         balance[msg.sender] = balance[msg.sender].add(msg.value);
         //@dev  Create logs
         emit LogDeposit (msg.sender, msg.value);
-    }    
-    
+    }
+
      //@notice  Function that allows a move to be submitted
     function submitMove(address _opponentAddress, bytes32 _hashedMove, uint256 _wager) public onlyIfRunning payable {
         //@dev  Create a unique hash to store the move
@@ -77,7 +77,7 @@ contract RockPaperScissors is Stoppable {
         require(submits[_hashedMove] == false, "You have previously used this move / password combination, please use an unique password");
         //@dev  Verify that there is no existing move for sender against the opponent
         require(plays[storeMove].opponent == address(0), "You have already submitted a move against this opponent");
-        //@dev  Verify if the opponent already has submitted a move and if they have, that it has the same wager
+        //@dev  Verify if the opponent already has submitted a move an if they have, that it has the same wager
         if (plays[storeMoveOpponent].opponent == msg.sender) {
             require(plays[storeMoveOpponent].wager == _wager, "You must wager the same amount as your opponent");
         }
@@ -94,7 +94,7 @@ contract RockPaperScissors is Stoppable {
         //@dev  Create logs
         emit LogSubmittedMove(msg.sender, _opponentAddress, _wager);
     }
-    
+
     //Function that allows a player to reveal their move, but only if the opponent has also submitted a move
     function revealMove(address _opponentAddress, Moves _move, bytes32 _password) public onlyIfRunning {
         //@dev  Calculate hash against which the move is stored
@@ -102,13 +102,13 @@ contract RockPaperScissors is Stoppable {
         //@dev  Calculate the hash your opponent has stored his move against
         bytes32 opponentDetails = calculateStorageHashOpponent(_opponentAddress, msg.sender);
         //@dev  Verify that msg.sender has stored a move against opponent
-        require(plays[msgSenderDetails].opponent == _opponentAddress, 
+        require(plays[msgSenderDetails].opponent == _opponentAddress,
         "There is no move outstanding against opponent which you can reveal");
         //@dev  Verify that the opponent has stored a move against msg.sender
-        require(plays[opponentDetails].opponent == msg.sender, 
+        require(plays[opponentDetails].opponent == msg.sender,
         "You can't reveal your move until after your opponent has submitted a move");
         //@dev  Verify that the hash is correct
-        require(plays[msgSenderDetails].hashedMove == generateHashedMove(_move, _password), 
+        require(plays[msgSenderDetails].hashedMove == generateHashedMove(_move, _password),
         "The move you are attempting to reveal is not the same as the one you submited");
         Plays storage saveMove = plays[msgSenderDetails];
         saveMove.move = _move;
@@ -125,7 +125,7 @@ contract RockPaperScissors is Stoppable {
         //@dev  Retrieve wager
         uint256 wager = plays[msgSenderDetails].wager;
         //@dev  Call function which will determine which player has the winning move
-        Result gameResult = calculateWin(_move, moveOpponent); 
+        Result gameResult = calculateWin(_move, moveOpponent);
         //@dev  Delete the moves of both players (so they can play again)
         delete plays[msgSenderDetails];
         delete plays[opponentDetails];
@@ -144,7 +144,7 @@ contract RockPaperScissors is Stoppable {
             return Result.Draw;
         }
     }
-    
+
     //@notice  Function that allows a played move to be rescinded when opponent doesn't submit move within a week
     //@notice  or when move doesn't get revealed within a week of msg.sender revealing
     function rescindMove(address _opponent) public onlyIfRunning {
@@ -159,42 +159,42 @@ contract RockPaperScissors is Stoppable {
             //@dev Then verfiy if the expiry period has been exceded and if it has, call returnWager function
             require(plays[msgSenderDetails].timestampSubmit.add(gameExpiry) < now, "Submission expiry not exceeded yet"); {
             returnWager(msgSenderDetails, _opponent);
-            } 
-        }    
+            }
+        }
         //@dev  If the opponent has submitted a move
         else if (plays[opponentDetails].opponent == msg.sender) {
             //@dev  And if message sender has not revealed his/her move yet, then don't allow to rescind
             if (plays[msgSenderDetails].move == Moves.Undefined) {
-                require(plays[msgSenderDetails].move != Moves.Undefined, 
+                require(plays[msgSenderDetails].move != Moves.Undefined,
                 "You and your opponent have both submitted a move, but not revealed, you can't rescind until after you have revealed and your opponent has expired his/her reveal period");
             //@dev  If the message sender has revealed a move and the opponent hasn't, allow to rescind after expiry has been reached
             } else if (plays[msgSenderDetails].move != Moves.Undefined) {
-                require(plays[opponentDetails].move == Moves.Undefined && plays[msgSenderDetails].timestampReveal.add(gameExpiry) < now, 
+                require(plays[opponentDetails].move == Moves.Undefined && plays[msgSenderDetails].timestampReveal.add(gameExpiry) < now,
                 "Your opponent still has time to reveal his/her move before you can rescind");
                 returnWager(msgSenderDetails, _opponent);
             }
         }
     }
-     
+
     //@notice  Function that allows a player to withdraw his/her balance
-    function withdrawBalance(uint256 amount) public onlyIfNotPaused { 
+    function withdrawBalance(uint256 amount) public onlyIfNotPaused {
         //@dev  Verify that the amount is positive
         require(amount > 0, "You must withdraw a positive amount");
         //@dev  Verify that the amount is not greater than the balance
         require(balance[msg.sender] >= amount, "You don't have a high enough balance");
-        //@dev  Decrease balance 
+        //@dev  Decrease balance
         balance[msg.sender] = balance[msg.sender].sub(amount);
         //@dev  Transfer balance to sender
         address(msg.sender).transfer(amount);
         //@dev  Create logs
         emit LogWithdrawBalance(msg.sender, amount);
-    }    
-    
+    }
+
     //@notice  Retrieves contract balance - just for Remix
     function getContractBalance() public view returns (uint256) {
         return address(this).balance;
     }
-    
+
     //Function that allows a move with password to be hashed
     function generateHashedMove(Moves _move, bytes32 _password) view public returns (bytes32) {
         //Verify that the move and password have been populated
@@ -202,19 +202,19 @@ contract RockPaperScissors is Stoppable {
         require(_password != 0, "Entering a password is mandatory");
         return keccak256(abi.encodePacked(this, msg.sender, _move, _password));
     }
-    
+
     //@notice  Function that calculates the hash against which moves are stored in the mapping for the player
     function calculateStorageHashMsgSender(address _msgSender, address _opponentAddress) pure public returns (bytes32 storageHashPlayer) {
         bytes32 storeMove = keccak256(abi.encodePacked(_msgSender, _opponentAddress));
         return storeMove;
     }
-    
+
     //@notice  Function that calculates the hash against which moves are stored in the mapping for the opponent
     function calculateStorageHashOpponent(address _opponentAddress, address _msgSender) pure public returns (bytes32 storageHashOpponent) {
         bytes32 storeMove = keccak256(abi.encodePacked(_opponentAddress, _msgSender));
         return storeMove;
     }
-    
+
     //@notice  Function that calculates the winning move
     function calculateWin(Moves _move1, Moves _move2) pure internal returns (Result result) {
         if (_move1 == _move2) {
@@ -233,8 +233,8 @@ contract RockPaperScissors is Stoppable {
             return Result.msgSenderWins;
         }
     }
-    
-    //@notice  Function that returns wagers from rescinded moves to message sender       
+
+    //@notice  Function that returns wagers from rescinded moves to message sender
     function returnWager(bytes32 _msgSenderDetails, address _opponent) internal {
         //@dev  Delete the move
         uint256 wager = plays[_msgSenderDetails].wager;
@@ -244,5 +244,4 @@ contract RockPaperScissors is Stoppable {
         //@dev  Create logs
         emit LogRescindedMove(msg.sender, _opponent, wager);
     }
-
 }

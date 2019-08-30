@@ -2,7 +2,7 @@ const RockPaperScissors = artifacts.require("./RockPaperScissors.sol");
 const truffleAssert = require('truffle-assertions');
 const BN = require('bn.js');
 
-contract('Remittance', (accounts) => {
+contract('RockPaperScissors', (accounts) => {
 
     let rps;
     let owner = accounts[0];
@@ -12,6 +12,7 @@ contract('Remittance', (accounts) => {
     let movePlayer2 = 2;
     let passwordPlayer1 = "0xaaaaaa";
     let passwordPlayer2 = "0xbbbbbb";
+    let winnerPlayer2 = 0;
     let depositAmount = web3.utils.toBN(web3.utils.toWei('10000000', 'wei'));
     let wagerAmount = web3.utils.toBN(web3.utils.toWei('1000000', 'wei'));
     const GAS_PRICE = new BN(1000);
@@ -45,9 +46,22 @@ contract('Remittance', (accounts) => {
       assert.strictEqual(submitTxReceipt.logs[0].args.wager.toString(10), wagerAmount.toString(10), "Transaction receipt shows incorrect wager");
       //Verify the submitted move is stored
       assert.strictEqual(hashedMove.toString(), (await rps.plays(storeMove))[2].toString(), "The hashed moved is incorrect");
-      console.log((await rps.plays(storeMove))[2].toString());
-      console.log((await rps.generateHashedMove(movePlayer1, passwordPlayer1)).toString());
-
     })
 
-})    
+    it("Verify a move can be revealed and the game played", async () => {
+      //Submit deposit transactions
+      const depositTxReceiptPlayer1= await rps.deposit({from: player1, value: depositAmount});
+      const depositTxReceiptPlayer2= await rps.deposit({from: player2, value: depositAmount});
+      //Generate hashed moves
+      const hashedMovePlayer1 = await rps.generateHashedMove(movePlayer1, passwordPlayer1, {from: player1});
+      const hashedMovePlayer2 = await rps.generateHashedMove(movePlayer2, passwordPlayer2, {from: player2});
+      //Submit moves
+      const submitMoveTxReceiptPlayer1 = await rps.submitMove(player2, hashedMovePlayer1, wagerAmount, {from: player1});
+      const submitMoveTxReceiptPlayer2 = await rps.submitMove(player1, hashedMovePlayer2, wagerAmount, {from: player2});
+      //Reveal moves
+      const revealMoveTxReceiptPlayer1 = await rps.revealMove(player2, movePlayer1, passwordPlayer1, {from: player1});
+      const revealMoveTxReceiptPlayer2 = await rps.revealMove(player1, movePlayer2, passwordPlayer2, {from: player2});
+      //Checking the transaction event logs
+      assert.strictEqual(revealMoveTxReceiptPlayer2.logs[0].args.result.toString(10), winnerPlayer2.toString(10), "Transaction receipt shows incorrect sender");
+    })
+})
