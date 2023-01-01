@@ -21,9 +21,9 @@
   "homepage": "https://github.com/richard-boeve/RockPaperScissors#readme",
   "devDependencies": {
     "create-html": "^4.1.0",
-    "file-loader": "^3.0.1",
-    "webpack": "^4.29.6",
-    "webpack-cli": "^3.3.0",
+    "file-loader": "^6.2.0",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1",
     "webpack-dev-server": "^3.8.0"
   },
   "dependencies": {
